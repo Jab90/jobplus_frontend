@@ -1,9 +1,8 @@
 import React, {useState} from 'react';
 import '../styles/form.scss';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { parseErrors } from '../../utils/parseErrors';
 import Alert from '../alert/Alert';
+import { useApi } from '../../hooks/useApi';
 
 export default function register() {
   const [firstName, setFirstName] = useState('');
@@ -13,6 +12,8 @@ export default function register() {
   const [confirmPassword, setConfirmPassword] = useState(''); 
 
   const [alert, setAlert] = useState({});
+
+  const { post } =  useApi();
 
   const handleSubmit = async (e) => { 
       e.preventDefault(); //prevent default form submission
@@ -34,25 +35,25 @@ export default function register() {
         username: email,
       };
 
-      try { 
-        // make a post request to the backend api 
-        const res = await axios.post('http://localhost:1337/api/auth/local/register', data);
-        // reset our state 
-        setFirstName('');
-        setLastName('');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-        setAlert({
-          message: 'Account created successfully',
-          details: [],
-          type: 'success',
-        });
-      } catch (err) { 
-        setAlert(parseErrors(err));
-        
-        
-      }
+      const handleSuccess = () => { 
+            // reset our state 
+            setFirstName('');
+            setLastName('');
+            setEmail('');
+            setPassword('');
+            setConfirmPassword('');
+            setAlert({
+              message: 'Account created successfully',
+              details: [],
+              type: 'success',
+              });
+      };
+
+      await post('auth/local/register', { 
+        data: data, 
+        onSuccess: (res) => handleSuccess(),
+        onFailure: (err) => setAlert(err)
+      });
   };
   
   return (
