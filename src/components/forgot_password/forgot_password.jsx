@@ -5,12 +5,15 @@ import axios from 'axios';
 import Alert from '../alert/Alert';
 import { parseErrors } from '../../utils/parseErrors';
 import { useApi } from '../../hooks/useApi';
+import authService from '../../services/AuthService';
 
 export default function forgot_password() {
   const [email, setEmail] = useState('');
   const [alert, setAlert] = useState({});
 
   const { post } = useApi();
+
+  const { forgotPassword } = authService(); 
 
   const handleSuccess = () => { 
     // reset out state 
@@ -21,14 +24,14 @@ export default function forgot_password() {
     });
   };
 
+  const handleError = (err) => { 
+    setAlert(err); 
+  }; 
+
   const handleSubmit = async (e) => { 
     e.preventDefault(); // Prevent default form submission
 
-    await post('auth/forgot-password', { 
-      data: { email },
-      onSuccess: (res) => handleSuccess(),
-      onFailure: (err) => setAlert(err)
-    });
+    await forgotPassword(email, handleSuccess, handleError);
 
   };
 

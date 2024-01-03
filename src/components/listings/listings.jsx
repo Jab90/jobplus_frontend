@@ -4,11 +4,14 @@ import './listings.scss';
 import Paginate from '../paginate/paginate';
 
 import { StarSaved, StarUnSaved, Money, Location, Timer } from '../images';
-import { useApi } from '../../hooks/useApi';
 
 import ConfirmationModal from '../confirmation_modal/confirmation_modal';
+import jobService from '../../services/JobService';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
-const MAX_PER_PAGE = 3; 
+import applyJobService from '../../services/AppliedJobService';
+
 const MAX_LENGTH_CHARS =200;
 
 export default function listings() {
@@ -17,7 +20,9 @@ export default function listings() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [jobToSave, setJobToSave] = useState(null);
 
-  const { get } = useApi(); 
+  const { applyForJob, withdrawApplication } = applyJobService();
+  const { getLoggedInUserId } = useAuth(); 
+  const { fetchJobs } = jobService();
 
   const handleSuccess = (res) => { 
     const { entries, meta } = res.data;
@@ -30,18 +35,6 @@ export default function listings() {
 
     setJobs(updatedJobs);
     setMeta(meta);
-  };
-
-  const fetchJobs = async (page = 1) => { 
-    await get ('jobs', { 
-      onSuccess: (res) => handleSuccess(res),
-      params: { 
-        'populate[company]': true,
-        'populate[job_types]': true,
-        'start': (page - 1) * MAX_PER_PAGE,
-        'limit': MAX_PER_PAGE, 
-      },
-    });
   };
 
   const truncate = (text, jobId) => { 
@@ -81,12 +74,49 @@ export default function listings() {
   }
 
   useEffect(() => { 
-    fetchJobs();
+    const page = 1; 
+    fetchJobs(page, handleSuccess);
   }, []);
 
   const handlePageChange = (pageNumber) => { 
-    fetchJobs(pageNumber);
+    fetchJobs(pageNumber, handleSuccess);
   };
+
+  const handleApplyForJob = async(jobId) => { 
+    const data = { 
+      job: jobId, 
+      user: getLoggedInUserId(), 
+    };
+
+    await applyForJob(data, (res) => {
+      const updatedJobs = jobs.map((job) => { 
+        if (job.id === jobId) { 
+          return { ...job, hasApplied: true };
+        }
+        return job;
+      });
+      setJobs(updatedJobs); 
+    });
+  }; 
+
+  const handleWithdrawApplication = async(jobId) => { 
+    const data = { 
+      jobId: jobId, 
+      userId: getLoggedInUserId(),
+    };
+
+    await withdrawApplication(data, (res) => {
+      const updatedJobs = jobs.map((job) => { 
+        if (job.id === jobId) { 
+          return { ...job, hasApplied: false };
+        }
+        return job;
+      });
+      setJobs(updatedJobs);
+     }); 
+  }; 
+  
+  console.log(jobs); 
 
   return (
     <>
@@ -134,9 +164,15 @@ export default function listings() {
               </a>
             </p>
 
-            <a href="" className="listing__cta">
-              Withdraw application
-            </a>
+            <Link to="#"
+            className="listing__cta"
+            onClick={(e) => { 
+              e.preventDefault();
+              job.hasApplied ? handleWithdrawApplication(job.id) : handleApplyForJob(job.id); 
+            }}
+            >
+              <b>{job.hasApplied ? 'Withdraw application' : 'Apply Now'}</b>
+            </Link>
           </div>
           ))}
         <Paginate meta={meta.paginate} onPageChange={handlePageChange} />
